@@ -1,5 +1,6 @@
 package zcrb.excel.adder;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -9,23 +10,29 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.ClientAnchor;
 import org.apache.poi.ss.usermodel.Comment;
+import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Drawing;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
 
 public class PoiAdder {
 
   private static List<String> tt = Arrays.asList(new String[] { "888999", "888999.0" });
 
   private static boolean isCellForAdd(Cell cell) {
-    return tt.contains(cell.toString());
+    return cell != null && tt.contains(cell.toString());
   }
 
   private static class SrcDescr {
@@ -41,13 +48,16 @@ public class PoiAdder {
 
   public static void runAdder(Model model) throws Exception {
     model.sendMsg("==============");
-    model.sendMsg("-=Старт склейки файлов в один.=-");
-
+    model.sendMsg("-=Старт склейки файлов в один=-");
 
     File templateFile = model.getTemplateFile();
-    Workbook templatewb = WorkbookFactory.create(new FileInputStream(templateFile));
-    // Workbook targetwb = WorkbookFactory.create(new
-    // FileInputStream(templateFile));
+    // Workbook templatewb = WorkbookFactory.create(new BufferedInputStream(new
+    // FileInputStream(templateFile)));
+    Workbook templatewb = WorkbookFactory.create(new BufferedInputStream(new FileInputStream(templateFile)));
+
+    CellStyle debuggerCellStyle = templatewb.createCellStyle();
+    debuggerCellStyle.setFillForegroundColor(IndexedColors.YELLOW.index);
+    debuggerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
     List<String> templateNameSheetList = new ArrayList<>();
     templatewb.sheetIterator().forEachRemaining(sheet -> templateNameSheetList.add(sheet.getSheetName()));
@@ -57,7 +67,7 @@ public class PoiAdder {
     // initialize list of srcDescr
     for (int q = 0; q < excelFiles.length; q++) {
       File currentFile = excelFiles[q];
-      Workbook currentWorkbook = WorkbookFactory.create(new FileInputStream(currentFile));
+      Workbook currentWorkbook = WorkbookFactory.create(new BufferedInputStream(new FileInputStream(currentFile)));
       SrcDescr srcDescr = new SrcDescr(currentFile, currentWorkbook);
       srcDescrList.add(srcDescr);
     }
@@ -85,7 +95,7 @@ public class PoiAdder {
           Cell cell = templateRow.getCell(c);
           boolean isCellForAdd = isCellForAdd(cell);
           if (isCellForAdd) {
-            doAdd(model, srcDescrList, cell);
+            doAdd(model, srcDescrList, cell, debuggerCellStyle);
           }
 
         }
@@ -98,7 +108,8 @@ public class PoiAdder {
     File srcDir = model.getSrcDir();
     File resultDir = new File(srcDir, "result");
     resultDir.mkdirs();
-    File outFile = new File(resultDir, formatD.format(new Date()) + ".xls");
+    File outFile = new File(resultDir, (model.isDebugMode() ? "DEBUGGER_VERSION_" : "") + formatD.format(new Date())
+        + ".xls" + (templatewb instanceof XSSFWorkbook ? "x" : ""));
     OutputStream outStream = (new FileOutputStream(outFile));
     templatewb.write(outStream);
     outStream.close();
@@ -106,41 +117,71 @@ public class PoiAdder {
     model.sendMsg("-=Файл (" + outFile + ") сохранен.=-");
   }
 
-  private static void doAdd(Model model, List<SrcDescr> srcDescrList, Cell cell) {
+  private static void doAdd(Model model, List<SrcDescr> srcDescrList, Cell cell, CellStyle debugStyle) {
     boolean isDebugMode = model.isDebugMode();
 
+    Workbook targetWb = cell.getSheet().getWorkbook();
+    Sheet targetSheet = cell.getSheet();
     String sheetName = cell.getSheet().getSheetName();
     int rowIndex = cell.getRowIndex();
     int cellIndex = cell.getColumnIndex();
 
-
     double sum = 0;
+    StringBuilder debuggerComment = new StringBuilder();
+
     for (int q = 0; q < srcDescrList.size(); q++) {
       SrcDescr srcDescr = srcDescrList.get(q);
       Workbook srcWB = srcDescr.workBook;
 
       Sheet srcSheet = srcWB.getSheet(sheetName);
+      if (srcSheet == null) {
+        model.sendMsg("Файл (" + srcDescr.file + ") Лист (" + sheetName + ") не найден! (ПРОПУСКАЮ ЦЕЛЫЙ ЛИСТ!!!)");
+        continue;
+      }
       Row srcRow = srcSheet.getRow(rowIndex);
       if (srcRow == null) {
-        model.sendMsg("Файл (" + srcDescr.file + ") Лист (" + sheetName + ") строчка (" + (rowIndex + 1)
-            + ") не найдена! (ПРОПУСКАЮ)");
+        model.sendMsg("Файл (" + srcDescr.file + ") Лист (" + sheetName + ") строчка (" + (rowIndex + 1) + ") ("
+            + cell.getAddress() + ") не найдена! (ПРОПУСКАЮ)");
         continue;
       }
       Cell srcCell = srcRow.getCell(cellIndex);
       if (srcCell == null) {
         model.sendMsg("Файл (" + srcDescr.file + ") Лист (" + sheetName + ") строчка (" + (rowIndex + 1) + ") ячейка("
-            + cellIndex + ") не найдена! (ПРОПУСКАЮ)");
+            + cellIndex + ") (" + cell.getAddress() + ") не найдена! (ПРОПУСКАЮ)");
         continue;
       }
+
+      if (srcCell.getCellType() != CellType.NUMERIC) {
+        model.sendMsg("Файл (" + srcDescr.file + ") Лист (" + sheetName + ") строчка (" + (rowIndex + 1) + ") ячейка("
+            + cellIndex + ") НЕ число (" + cell.getAddress() + " = '" + srcCell + "')! (ПРОПУСКАЮ)");
+        continue;
+      }
+
       double srcValue = srcCell.getNumericCellValue();
       sum += srcValue;
+      debuggerComment.append(srcDescr.file.getName() + " - " + srcValue).append('\n');
     }
 
     cell.setCellValue(sum);
 
     if (isDebugMode) {
-      // HSSFPatriarch hpt = (HSSFPatriarch) cell.getSheet().createDrawingPatriarch();
-      // cell.setCellComment();
+      cell.setCellStyle(debugStyle);
+      {
+        cell.removeCellComment();
+        CreationHelper factory = targetWb.getCreationHelper();
+        ClientAnchor anchor = factory.createClientAnchor();
+        anchor.setCol1(cell.getColumnIndex());
+        anchor.setCol2(cell.getColumnIndex() + 5);
+        anchor.setRow1(cell.getRowIndex());
+        anchor.setRow2(cell.getRowIndex() + 10);
+
+        Drawing<?> drawing = targetSheet.createDrawingPatriarch();
+        Comment comment = drawing.createCellComment(anchor);
+        comment.setString(factory.createRichTextString(debuggerComment.toString()));
+        cell.setCellComment(comment);
+
+      }
+
     }
   }
 

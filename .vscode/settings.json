@@ -5,17 +5,6 @@
     "titleBar.activeForeground": "#FFFFFF",
   },
   "files.trimTrailingWhitespace": true,
-
-  "java.configuration.runtimes": [
-    {
-      "name": "JavaSE-1.8",
-      "path": "/c/Program Files/OpenJDK/openjdk-8u282-b08",
-      "default": true
-    }
-  ],
-  "java.project.referencedLibraries": [
-    "lib/**/*.jar"
-  ],
-  "java.format.settings.url": "manualFormatter.xml",
-  "java.format.settings.profile": "myProfile",
+  "maven.view": "hierarchical",
+  "java.configuration.updateBuildConfiguration": "automatic",
 }

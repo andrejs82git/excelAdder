@@ -6,7 +6,7 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Launch Main",
+      "name": "zcrbMain",
       "request": "launch",
       "mainClass": "zcrb.excel.adder.Main",
       "projectName": "excelAdder_e54523ac"

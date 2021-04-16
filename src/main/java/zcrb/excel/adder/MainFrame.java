@@ -1,19 +1,28 @@
 package zcrb.excel.adder;
 
+import java.awt.*;
+import java.awt.font.*;
+import java.awt.Desktop;
+import java.awt.event.MouseEvent;
+import java.awt.Cursor;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.FlowLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -25,8 +34,10 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import javax.swing.table.TableColumn;
+import javax.swing.event.MouseInputAdapter;
+import javax.swing.event.MouseInputListener;
 
 public class MainFrame extends JFrame {
 
@@ -120,7 +131,7 @@ public class MainFrame extends JFrame {
     JTextArea textArea = new JTextArea();
     SimpleDateFormat formatD = new SimpleDateFormat("[dd.mm.yyyy HH:mm:ss]");
     MainFrame.this.model.addPropertyChangeListener(Model.MODEL_SEND_MESSAGE,
-        (evt) -> textArea.append(formatD.format(new Date()) + " " + evt.getNewValue()+"\n"));
+        (evt) -> textArea.append(formatD.format(new Date()) + " " + evt.getNewValue() + "\n"));
 
     JScrollPane scroll = new JScrollPane(textArea);
     scroll.setMinimumSize(new Dimension(-1, 70));
@@ -175,6 +186,33 @@ public class MainFrame extends JFrame {
       File f = (File) ev.getNewValue();
       label.setText("Директория: " + f.getAbsolutePath());
     });
+
+    label.setCursor(new Cursor(Cursor.HAND_CURSOR));
+    label.addMouseListener(new MouseAdapter() {
+      @Override
+      public void mouseClicked(MouseEvent e) {
+        if (SwingUtilities.isLeftMouseButton(e)) {
+          Desktop desktop = Desktop.getDesktop();
+          try {
+            desktop.open(MainFrame.this.model.getSrcDir());
+          } catch (Exception err) {
+            err.printStackTrace();
+          }
+        }
+      }
+
+      Font standartFont = label.getFont();
+
+      public void mouseEntered(MouseEvent e) {
+        Map<TextAttribute, Object> attributes = new HashMap<>(standartFont.getAttributes());
+        attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
+        label.setFont(new Font(attributes));
+      }
+
+      public void mouseExited(MouseEvent e) {
+        label.setFont(standartFont);
+      }
+    });
     return label;
   }
 
@@ -195,7 +233,7 @@ public class MainFrame extends JFrame {
 
       @Override
       public void actionPerformed(ActionEvent e) {
-        JFileChooser chooser = new JFileChooser("C:\\Users\\andre\\Downloads\\tmp");
+        JFileChooser chooser = new JFileChooser("C:\\Users\\andre\\Downloads\\tmp2");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
         int returnVal = chooser.showOpenDialog(MainFrame.this);
