@@ -124,6 +124,14 @@ public class MainFrame extends JFrame {
       mainPanel.add(this.getRunButton(), c);
     }
 
+    // DragAndDrop
+    new java.awt.dnd.DropTarget(mainPanel, new MyDragDropListener() {
+      @Override
+      public void doDragFolder(File f) {
+        MainFrame.this.model.setSrcDir(f);
+      }
+    });
+
     return mainPanel;
   }
 
@@ -242,6 +250,7 @@ public class MainFrame extends JFrame {
         }
       }
     });
+
     return b;
   }
 }
