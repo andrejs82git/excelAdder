@@ -25,7 +25,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory;
 
 public class PoiAdder {
 
@@ -90,6 +89,7 @@ public class PoiAdder {
 
       for (int r = 0; r <= curreSheetTemplatSheet.getLastRowNum(); r++) {
         Row templateRow = curreSheetTemplatSheet.getRow(r);
+        if(templateRow ==null) continue;
 
         for (int c = 0; c < templateRow.getLastCellNum(); c++) {
           Cell cell = templateRow.getCell(c);
@@ -148,6 +148,11 @@ public class PoiAdder {
       if (srcCell == null) {
         model.sendMsg("Файл (" + srcDescr.file + ") Лист (" + sheetName + ") строчка (" + (rowIndex + 1) + ") ячейка("
             + cellIndex + ") (" + cell.getAddress() + ") не найдена! (ПРОПУСКАЮ)");
+        continue;
+      }
+
+      //Пустые строчки пропускаем и даже не сигналим о них
+      if (srcCell.getCellType() == CellType.BLANK) {
         continue;
       }
 
